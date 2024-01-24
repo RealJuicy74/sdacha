@@ -9,7 +9,6 @@ import cv2
 import re
 
 
-#Подключение к серверу
 PORT = 5050
 DISCONNECT_MESSAGE = "END"
 SEND_FILE_MESSAGE = 'Send file'
@@ -20,7 +19,6 @@ client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDR)
 
 shutdown = False
-#Рисование баркода
 def draw_barcode(decoded, image):
     # n_points = len(decoded.polygon)
     # for i in range(n_points):
@@ -28,7 +26,6 @@ def draw_barcode(decoded, image):
     image = cv2.rectangle(image, (decoded.rect.left, decoded.rect.top),(decoded.rect.left + decoded.rect.width, decoded.rect.top + decoded.rect.height),color=(0, 255, 0), thickness=5)
     return image
 
-#декодирование
 def decode(image):
     # decodes all barcodes from an image
     decoded_objects = pyzbar.decode(image)
@@ -53,13 +50,11 @@ def receving(name, sock):
         except:
             pass
 
-#Ключ
 def load_key():
     a = open('crypto.key', 'rb').read()
     return a
 
 
-#Шифрование файла
 def encrypt(filename, key):
     f = Fernet(key)
     with open(filename, 'rb') as file:
@@ -69,7 +64,6 @@ def encrypt(filename, key):
         file.write(encrypted_data)
 
 
-#Дешифрование файла
 def decrypt(filename, key):
     f = Fernet(key)
     with open(filename, 'rb') as file:
@@ -90,7 +84,6 @@ def send(msg):
         client.send(encrypted_msg)
 
 
-#Прием сообщений
 def reciver(conn, q):
     f = Fernet(load_key())
     if q == 1:
@@ -118,7 +111,7 @@ def reciver(conn, q):
                         else:
                             with open(f'Filiki/{name}', 'w') as file:
                                 file.write(data)
-                        print('Файл успешно установлен.\n')
+                        print('yah.\n')
                     else:
                         q.put((conn, decrypted_msg))
                         print(decrypted_msg)
@@ -126,17 +119,11 @@ def reciver(conn, q):
                 break
 
 
-#Запуск клиентского приложения
-# Определить флаг для завершения работы программы
 flag = True
  
- # Сохраните информацию QR-кода в базе данных MySQL
 def insert(type, data):
  
-         # Определить глобальные переменные
     global flag
- 
-         # Создать объект подключения к базе данных
 
     host = socket.gethostbyname(socket.gethostname())
     port = 5432
@@ -146,89 +133,71 @@ def insert(type, data):
     db_namee = 'tovar'
 
     conn = PostgresqlDatabase(db_namee, user = userr, password = passwordd, host = hostt)
-                 # Метод кодирования базы данных - utf8
     charset="utf8"
     
  
-         # Используйте курсор () метод для создания курсора объекта курсора
+
     cursor = conn.cursor()
  
-         # Оператор вставки SQL
     sql = "insert into qrcode(type,data) values(%s,%s)"
     try:
-                 # Выполнить инструкцию sql
         if cursor.execute(sql, (type, data)) != -1:
             flag = False
-                 # Отправить в базу данных для исполнения
         conn.commit()
     except Exception as e:
-                 # Если возникает ошибка, откатитесь и распечатайте сообщение об ошибке
         conn.rollback()
         print(e)
  
-         # Закрыть курсор
     cursor.close()
-         # Закрыть соединение с базой данных
     conn.close()
  
  
- # Анализировать QR-код
 def decode(image):
-         # Разобрать изображение
     barcodes = pyzbar.decode(image)
- 
     for barcode in barcodes:
-                 # Извлечь положение ограничительной рамки QR-кода
+                 
         (x, y, w, h) = barcode.rect
-                 # Нарисуйте ограничительную рамку штрих-кода на изображении
+                
         cv2.rectangle(image, (x, y), (x + w, y + h), (0, 0, 255), 2)
  
-                 # Тип QR-кода
         barcodeType = barcode.type
-                 # QR код данных
+                
         barcodeData = barcode.data.decode("utf-8")
  
-                 # Хранить информацию в базе данных
         insert(barcodeType, barcodeData)
  
-                 # Нарисуйте тип QR-кода и данные QR-кода на изображении
         text = "{} ".format(barcodeType, barcodeData)
         cv2.putText(image, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX,
                     .5, (0, 0, 125), 2)
  
-                 # Печать данных штрих-кода и типа штрих-кода на терминал
         print("[INFO] Found {} barcode: {}".format(barcodeType, barcodeData))
  
     return image
  
- 
- # Позвоните в камеру, чтобы распознать QR-код
+
 def detect():
-         # Позвоните на встроенную камеру
-    camera = cv2.VideoCapture (0) # Параметр 0 представляет встроенную камеру, параметр 1 представляет внешнюю камеру
+        
+    camera = cv2.VideoCapture (0)
  
-         # Отображение изображений в реальном времени
     while flag:
-                 # Читать текущий кадр
-        ret, frame = camera.read () # ret: логическое значение, указывающее, следует ли открывать камеру обычным образом: получить текущее изображение кадра
-                 # Преобразовать в изображение в градациях серого
+                
+        ret, frame = camera.read () 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                 # Вызов аналитической функции
+                 
         img = decode(gray)
  
-                 # Нажмите Q, чтобы выйти из программы
+            
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
  
-                 # Показать изображение
+                
         cv2.imshow("camera", img)
  
-         # Освободить ресурсы камеры
+         
     camera.release()
-         # Закройте окно с изображением
+        
     cv2.destroyAllWindows()
  
  
- # Запись основной функции
 if __name__ == '__main__':
     detect()
